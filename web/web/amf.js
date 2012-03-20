@@ -780,6 +780,15 @@ a3d.ByteArray = Class.extend({
     console.log('AMFExternalizable', className);
     if(className == 'flex.messaging.io.ArrayCollection') {
       o = this.readObject();
+    } else if(className == 'DSK') { //whatever that is ?!
+      var enc = this.objectEncoding;
+      var unknown = this.readByte();
+      this.objectEncoding = this.readByte();
+
+      console.log(unknown, this.objectEncoding);
+      o = this.readObject();
+      //restore previous objectEncoding
+      this.objectEncoding = enc;
     } else {
       console.error('Unknown className!');
     }
