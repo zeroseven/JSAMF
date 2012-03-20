@@ -32,7 +32,7 @@ function decodeAMF(data)
 {
   var bytes = new a3d.ByteArray(data, a3d.Endian.BIG);
 
-  //console.log(dumpHex(bytes));
+  console.log(dumpHex(bytes));
 
   var version = bytes.readUnsignedShort();
   bytes.objectEncoding = a3d.ObjectEncoding.AMF0;
@@ -84,7 +84,8 @@ function decodeAMF(data)
   {
     var targetURI = bytes.readUTF();
     var responseURI = bytes.readUTF();
-    bytes.readInt(); // Consume message body length...
+    var msgLen = bytes.readInt(); // Consume message body length...
+    console.log('message length:', msgLen);
 
     // Handle AVM+ type marker
     if (version == a3d.ObjectEncoding.AMF3)
@@ -101,6 +102,7 @@ function decodeAMF(data)
     var message = new a3d.AMFMessage(targetURI, responseURI, messageBody);
     response.messages.push(message);
 
+    //reset to AMF0 for next message
     bytes.objectEncoding = a3d.ObjectEncoding.AMF0;
   }
 
@@ -774,6 +776,7 @@ a3d.ByteArray = Class.extend({
 
   , readExternalizable: function(className)
   {
+    console.log('readExternalizable', this.readByte(), this.readByte());
     return this.readObject();
   }
 
@@ -865,7 +868,13 @@ a3d.ByteArray = Class.extend({
     }
     else if (marker == a3d.Amf0Types.kAvmPlusObjectType)
     {
-      return this.readAMF3Object();
+      //backup objectEncoding
+      var enc = this.objectEncoding;
+      this.objectEncoding = a3d.ObjectEncoding.AMF3;
+      var ret = this.readAMF3Object();
+      //restore previous objectEncoding
+      this.objectEncoding = enc;
+      return ret;
     }
     else if (marker == a3d.Amf0Types.kNullType)
     {
@@ -1002,6 +1011,7 @@ a3d.ByteArray = Class.extend({
 
       var ti = this.readTraits(ref);
       var className = ti.className;
+      o['type'] = className;
       var externalizable = ti.externalizable;
 
       if (externalizable)
