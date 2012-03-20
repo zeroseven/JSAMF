@@ -776,8 +776,14 @@ a3d.ByteArray = Class.extend({
 
   , readExternalizable: function(className)
   {
-    console.log('readExternalizable', this.readByte(), this.readByte());
-    return this.readObject();
+    o = {};
+    console.log('AMFExternalizable', className);
+    if(className == 'flex.messaging.io.ArrayCollection') {
+      o = this.readObject();
+    } else {
+      console.error('Unknown className!');
+    }
+    return o;
   }
 
   , readObject: function()
