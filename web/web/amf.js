@@ -32,7 +32,7 @@ function decodeAMF(data)
 {
   var bytes = new a3d.ByteArray(data, a3d.Endian.BIG);
 
-  console.log(dumpHex(bytes));
+  // console.log(dumpHex(bytes));
 
   var version = bytes.readUnsignedShort();
   bytes.objectEncoding = a3d.ObjectEncoding.AMF0;
@@ -85,7 +85,7 @@ function decodeAMF(data)
     var targetURI = bytes.readUTF();
     var responseURI = bytes.readUTF();
     var msgLen = bytes.readInt(); // Consume message body length...
-    console.log('message length:', msgLen);
+    // console.log('message length:', msgLen);
 
     // Handle AVM+ type marker
     if (version == a3d.ObjectEncoding.AMF3)
@@ -398,8 +398,29 @@ a3d.ByteArray = Class.extend({
   , init: function(data, endian)
   {
     if (typeof data == "string") {
-      data = data.split("").map(function(c) {
-        return c.charCodeAt(0);
+      data = data.split("").map(function(c, i) {
+        code = c.charCodeAt(0);
+        if(code > 0xFF) {
+          replacement = {
+            //those replacements were determined by parsing an array of all char codes in ISO-8859-15
+            8364: 164,
+            352: 166,
+            353: 168,
+            381: 180,
+            382: 184,
+            338: 188,
+            339: 189,
+            376: 190,
+            //those shouldn't happen, but were necessary:
+            
+          }[code];
+          if(replacement) {
+            return replacement;
+          } else {
+            console.warn("Invalid character code at pos", i, ": ", code, " was not replaced!");
+          }
+        }
+        return code
       });
     }
 
@@ -777,15 +798,12 @@ a3d.ByteArray = Class.extend({
   , readExternalizable: function(className)
   {
     o = {};
-    console.log('AMFExternalizable', className);
     if(className == 'flex.messaging.io.ArrayCollection') {
       o = this.readObject();
     } else if(className == 'DSK') { //whatever that is ?!
       var enc = this.objectEncoding;
       var unknown = this.readByte();
       this.objectEncoding = this.readByte();
-
-      console.log(unknown, this.objectEncoding);
       o = this.readObject();
       //restore previous objectEncoding
       this.objectEncoding = enc;
@@ -1026,7 +1044,13 @@ a3d.ByteArray = Class.extend({
 
       var ti = this.readTraits(ref);
       var className = ti.className;
-      o['type'] = className;
+      o.getClassName = function() {
+        return className;
+      };
+      o.toString = function() {
+        var parts = className.split('.');
+        return parts[parts.length - 1];
+      };
       var externalizable = ti.externalizable;
 
       if (externalizable)
